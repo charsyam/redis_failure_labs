@@ -1,0 +1,6 @@
+redis
+jinja2
+fastapi
+uvicorn
+python-multipart
+pydantic

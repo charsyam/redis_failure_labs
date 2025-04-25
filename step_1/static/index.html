@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Redis 장애 실습</title>
+</head>
+<body>
+  <h1>Redis 장애 실습 시스템</h1>
+
+  <h2>1. 유저 등록</h2>
+  <input id="user_id" placeholder="User ID">
+  <button onclick="register()">등록</button>
+
+  <h2>2. 메시지 전송</h2>
+  <input id="msg_content" placeholder="Message">
+  <button onclick="send()">보내기</button>
+
+  <h2>3. 관리자 검색 (장애 유도)</h2>
+  <input id="search_prefix" placeholder="Prefix">
+  <button onclick="search()">검색</button>
+  <p id="loading" style="display:none;">🔄 검색 중...</p>
+  <ul id="result_list"></ul>
+
+  <script>
+    function register() {
+      const user = document.getElementById("user_id").value;
+      fetch("/register?user_id=" + user, { method: "POST" })
+        .then(() => alert("✅ 유저 등록 완료"));
+    }
+
+    function send() {
+      const user = document.getElementById("user_id").value;
+      const content = document.getElementById("msg_content").value;
+      fetch("/send_message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user, content: content })
+      }).then(() => alert("✅ 메시지 전송 완료"));
+    }
+
+    function search() {
+      const prefix = document.getElementById("search_prefix").value;
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("result_list").innerHTML = '';
+
+      const start = performance.now();
+
+fetch("/admin/search_messages?prefix=" + prefix)
+    .then(res => res.json())
+    .then(data => {
+      const end = performance.now();  // ⏱ 요청 종료 시각
+      const duration = Math.round(end - start);
+
+      document.getElementById("loading").style.display = "none";
+      const ul = document.getElementById("result_list");
+
+      // 응답 시간 추가
+      const info = document.createElement('li');
+      info.innerHTML = `<strong>⏱ 응답 시간: ${duration}ms</strong>`;
+      ul.appendChild(info);
+
+      // 결과 출력
+      for (const [key, value] of Object.entries(data)) {
+        const li = document.createElement('li');
+        li.textContent = `[${key}] → ${value}`;
+        ul.appendChild(li);
+      }
+    })
+    .catch(err => {
+      document.getElementById("loading").style.display = "none";
+      alert("❌ 오류 발생: " + err.message);
+    });
+}
+</script>
+</body>
+</html>
