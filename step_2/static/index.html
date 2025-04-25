@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redis Match System Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; background: #f8f9fa; }
+    h1 { font-size: 24px; }
+    .card { background: white; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 20px; margin-bottom: 0.5rem; }
+    input { padding: 0.5rem; margin-right: 0.5rem; }
+    button { padding: 0.5rem 1rem; cursor: pointer; margin-top: 0.5rem; }
+    ul { list-style: none; padding-left: 1rem; }
+    li { margin-bottom: 0.25rem; }
+    .section { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Redis Match System Dashboard</h1>
+
+  <div class="card">
+    <h2>Join Queue</h2>
+    <input id="user_id" placeholder="User ID" />
+    <input id="score" type="number" placeholder="Score" />
+    <input id="region" placeholder="Region (e.g. kr)" value="kr" />
+    <button onclick="joinQueue()">Join</button>
+  </div>
+
+  <div class="card">
+    <h2>Match User</h2>
+    <input id="match_user_id" placeholder="User ID to Match" />
+    <input id="tolerance" type="number" placeholder="Tolerance (default 10)" />
+    <button onclick="matchUser()">Match</button>
+    <p id="match_result"></p>
+  </div>
+
+  <div class="card">
+    <h2>Region Queue Status</h2>
+    <ul id="status"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Recent Match Logs</h2>
+    <ul id="logs"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Top Rankers</h2>
+    <input id="top_region" placeholder="Region (e.g. kr)" value="kr" />
+    <input id="top_n" type="number" placeholder="Top N" value="5" />
+    <button onclick="fetchTop()">Fetch Top</button>
+    <ul id="top_list"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Snapshot (Warning: Heavy Operation)</h2>
+    <button onclick="fetchSnapshot()">Run Snapshot</button>
+    <pre id="snapshot_output" style="max-height: 200px; overflow: auto;"></pre>
+  </div>
+
+  <script>
+    async function fetchStatus() {
+      const res = await fetch('/status');
+      const data = await res.json();
+      const ul = document.getElementById('status');
+      ul.innerHTML = '';
+      for (const [region, count] of Object.entries(data)) {
+        const li = document.createElement('li');
+        li.textContent = `${region}: ${count} users waiting`;
+        ul.appendChild(li);
+      }
+    }
+
+    async function fetchLogs() {
+      const res = await fetch('/logs');
+      const data = await res.json();
+      const ul = document.getElementById('logs');
+      ul.innerHTML = '';
+      for (const log of data.logs) {
+        const li = document.createElement('li');
+        li.textContent = log;
+        ul.appendChild(li);
+      }
+    }
+
+    async function joinQueue() {
+      const user_id = document.getElementById('user_id').value;
+      const score = Number(document.getElementById('score').value);
+      const region = document.getElementById('region').value;
+
+      await fetch('/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, score, region })
+      });
+      alert(`${user_id} joined ${region}`);
+      fetchStatus();
+    }
+
+    async function matchUser() {
+      const user_id = document.getElementById('match_user_id').value;
+      const tolerance = document.getElementById('tolerance').value || 10;
+      const res = await fetch(`/match/${user_id}?tolerance=${tolerance}`);
+      const data = await res.json();
+      document.getElementById('match_result').textContent = `Matched with: ${data.matched_with || 'None'}`;
+      fetchStatus();
+      fetchLogs();
+    }
+
+    async function fetchTop() {
+      const region = document.getElementById('top_region').value;
+      const limit = document.getElementById('top_n').value;
+      const res = await fetch(`/top/${region}?limit=${limit}`);
+      const data = await res.json();
+      const ul = document.getElementById('top_list');
+      ul.innerHTML = '';
+      for (const [user, score] of data.top) {
+        const li = document.createElement('li');
+        li.textContent = `${user}: ${score}`;
+        ul.appendChild(li);
+      }
+    }
+
+    async function fetchSnapshot() {
+      const res = await fetch('/snapshot');
+      const data = await res.json();
+      document.getElementById('snapshot_output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    fetchStatus();
+    fetchLogs();
+  </script>
+</body>
+</html>
