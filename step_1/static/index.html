@@ -1,75 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Redis 장애 실습</title>
+  <meta charset="UTF-8">
+  <title>Redis KEYS Graph</title>
+  <style>
+    canvas { border: 1px solid black; display: block; }
+    #duration {
+      margin-top: 10px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      width: fit-content;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+  </style>
 </head>
 <body>
-  <h1>Redis 장애 실습 시스템</h1>
+  <canvas id="graph" width="800" height="400"></canvas>
+  <div id="duration">Loading...</div>
 
-  <h2>1. 유저 등록</h2>
-  <input id="user_id" placeholder="User ID">
-  <button onclick="register()">등록</button>
+<script>
+  const canvas = document.getElementById("graph");
+  const ctx = canvas.getContext("2d");
+  const durationBox = document.getElementById("duration");
 
-  <h2>2. 메시지 전송</h2>
-  <input id="msg_content" placeholder="Message">
-  <button onclick="send()">보내기</button>
+  function drawPoints(points, duration) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  <h2>3. 관리자 검색 (장애 유도)</h2>
-  <input id="search_prefix" placeholder="Prefix">
-  <button onclick="search()">검색</button>
-  <p id="loading" style="display:none;">🔄 검색 중...</p>
-  <ul id="result_list"></ul>
+    // 밀도 조절 비율 계산
+    let densityRatio = 1.0;
+    if (duration > 1500) densityRatio = 0.2;    // 매우 느릴 땐 20%
+    else if (duration > 800) densityRatio = 0.5; // 느릴 땐 50%
 
-  <script>
-    function register() {
-      const user = document.getElementById("user_id").value;
-      fetch("/register?user_id=" + user, { method: "POST" })
-        .then(() => alert("✅ 유저 등록 완료"));
-    }
+    const visibleCount = Math.floor(points.length * densityRatio);
+    const visiblePoints = points.slice(0, visibleCount);
 
-    function send() {
-      const user = document.getElementById("user_id").value;
-      const content = document.getElementById("msg_content").value;
-      fetch("/send_message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user, content: content })
-      }).then(() => alert("✅ 메시지 전송 완료"));
-    }
+    visiblePoints.forEach(p => {
+      const x = parseFloat(p.x);
+      const y = parseFloat(p.y);
+      if (isNaN(x) || isNaN(y)) return;
 
-    function search() {
-      const prefix = document.getElementById("search_prefix").value;
-      document.getElementById("loading").style.display = "block";
-      document.getElementById("result_list").innerHTML = '';
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = p.color || "black";
+      ctx.fill();
 
-      const start = performance.now();
-
-fetch("/admin/search_messages?prefix=" + prefix)
-    .then(res => res.json())
-    .then(data => {
-      const end = performance.now();  // ⏱ 요청 종료 시각
-      const duration = Math.round(end - start);
-
-      document.getElementById("loading").style.display = "none";
-      const ul = document.getElementById("result_list");
-
-      // 응답 시간 추가
-      const info = document.createElement('li');
-      info.innerHTML = `<strong>⏱ 응답 시간: ${duration}ms</strong>`;
-      ul.appendChild(info);
-
-      // 결과 출력
-      for (const [key, value] of Object.entries(data)) {
-        const li = document.createElement('li');
-        li.textContent = `[${key}] → ${value}`;
-        ul.appendChild(li);
-      }
-    })
-    .catch(err => {
-      document.getElementById("loading").style.display = "none";
-      alert("❌ 오류 발생: " + err.message);
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "black";
+      ctx.fillText(p.label || "?", x + 6, y - 6);
     });
-}
+  }
+
+  async function fetchPoints() {
+    const res = await fetch("http://localhost:8000/points");
+    const data = await res.json();
+    const d = data.duration_ms;
+
+    drawPoints(data.points, d);
+
+    // 응답 시간 및 색상 표시
+    durationBox.textContent =
+      `응답 시간: ${d} ms | 전체: ${data.total}개 중 ${data.returned}개 표시`;
+    durationBox.style.backgroundColor =
+      d > 1500 ? "#ff4d4d" :
+      d > 800  ? "#ffd633" :
+      "#ccffcc";
+  }
+
+  setInterval(fetchPoints, 1000);
 </script>
+
 </body>
 </html>
