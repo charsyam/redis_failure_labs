@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rank Matcher</title>
+</head>
+<body>
+<h1>🔥 User Rank Matcher</h1>
+
+<p>Total Users: <span id="total"></span></p>
+<input id="uid" placeholder="Enter your user ID"/>
+<button onclick="fetchMatch()">Get Match</button>
+
+<h3>Your Rank: <span id="your_rank"></span></h3>
+<p>Redis Elapsed Time: <span id="elapsed_time"></span> ms</p>
+
+<ul id="matched_users"></ul>
+<table border="1" cellspacing="0" cellpadding="5">
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>User ID</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody id="matched_users_table"></tbody>
+</table>
+
+  <script>
+    async function fetchTotal() {
+      const res = await fetch("http://localhost:8000/user_count");
+      const data = await res.json();
+      document.getElementById("total").innerText = data.count;
+    }
+
+    function getColorByDiff(diff) {
+  if (diff <= 100) return "#d4edda";      // 연초록 (가깝다)
+  else if (diff <= 500) return "#fff3cd"; // 노랑
+  else if (diff <= 2000) return "#ffeeba";// 주황
+  else return "#f8d7da";                  // 연빨강 (멀다)
+}
+
+async function fetchMatch() {
+  const uid = document.getElementById("uid").value;
+  const res = await fetch(`http://localhost:8000/user_match?user_id=${uid}`);
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    document.getElementById("elapsed_time").innerText = `${data.redis_elapsed_ms?.toFixed(2) || "?"}`;
+    return;
+  }
+
+  document.getElementById("your_rank").innerText = data.your_rank;
+  document.getElementById("elapsed_time").innerText = data.redis_elapsed_ms.toFixed(2);
+
+  const yourScore = data.your_score;
+
+  // 점수 차이 기준 정렬
+  const sorted = data.matched_users
+    .map(([user, score, rank]) => ({
+      user, score, rank,
+      diff: Math.abs(score - yourScore)
+    }))
+    .sort((a, b) => a.diff - b.diff);
+
+  const table = document.getElementById("matched_users_table");
+  table.innerHTML = "";
+
+  sorted.forEach(({ user, score, rank, diff }) => {
+    const row = document.createElement("tr");
+    row.style.backgroundColor = getColorByDiff(diff);
+    row.innerHTML = `
+      <td>${rank}</td>
+      <td>${user}</td>
+      <td>${score}</td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+  async function fetchRandomUsers() {
+    const res = await fetch("http://localhost:8000/random_users?count=30");
+    const data = await res.json();
+
+    const list = document.getElementById("random_users");
+    list.innerHTML = "";
+    data.random_users.forEach(([uid, score, rank]) => {
+      const li = document.createElement("li");
+      li.textContent = `#${rank}: ${uid} (score: ${score})`;
+      list.appendChild(li);
+    });
+  }
+
+    fetchTotal();
+    fetchRandomUsers();
+  </script>
+<h2>🎲 Random Users (Sample)</h2>
+<button onclick="fetchRandomUsers()">Show Random Users</button>
+<ul id="random_users"></ul>
+</body>
+</html>
+

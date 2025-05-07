@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>공지사항</title>
+</head>
+<body>
+  <h1>📢 공지사항</h1>
+
+  <div>
+    <input id="new_title" placeholder="제목 입력"><br>
+    <textarea id="new_body" rows="4" cols="50" placeholder="내용 입력"></textarea><br>
+    <button onclick="postNotice()">등록</button>
+  </div>
+
+  <hr>
+  <div>
+    <button onclick="prevPage()">이전</button>
+    <button onclick="nextPage()">다음</button>
+    <span>페이지: <span id="current_page">1</span></span>
+  </div>
+
+<p>조회 시간: <span id="query_time"></span> ms</p>
+  <ul id="notice_list"></ul>
+
+  <script>
+    let currentPage = 1;
+
+    async function loadNotices(page) {
+  const res = await fetch(`http://localhost:8000/notices?page=${page}`);
+  const data = await res.json();
+  currentPage = data.page;
+  document.getElementById("current_page").innerText = currentPage;
+
+  const list = document.getElementById("notice_list");
+  list.innerHTML = "";
+  data.notices.forEach(n => {
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="#" onclick="loadDetail(${n.id})"><b>${n.title}</b></a>`;
+    list.appendChild(li);
+  });
+document.getElementById("query_time").innerText = data.total_elapsed_ms;
+}
+
+async function loadDetail(id) {
+  const res = await fetch(`http://localhost:8000/notice/${id}`);
+  const data = await res.json();
+  alert(`제목: ${data.title}\n\n내용:\n${data.body}`);
+}
+
+async function postNotice() {
+  const title = document.getElementById("new_title").value;
+  const body = document.getElementById("new_body").value;
+
+  if (!title || !body) {
+    alert("제목과 내용을 모두 입력하세요.");
+    return;
+  }
+
+  await fetch("http://localhost:8000/notice", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ title, body })
+  });
+
+  // 입력 초기화 및 최신 공지 목록 다시 불러오기
+  document.getElementById("new_title").value = "";
+  document.getElementById("new_body").value = "";
+  loadNotices(1);
+}
+
+    function nextPage() {
+      loadNotices(currentPage + 1);
+    }
+
+    function prevPage() {
+      if (currentPage > 1) loadNotices(currentPage - 1);
+    }
+
+    loadNotices(1);
+  </script>
+</body>
+</html>
+

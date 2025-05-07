@@ -41,7 +41,7 @@ def bulk_add_points():
 @app.get("/points")
 def get_points():
     start = time.time()
-    keys = r.keys("point:*")  # intentionally slow
+    keys = r.keys("point:*") 
     duration_ms = int((time.time() - start) * 1000)
 
     sampled_keys = random.sample(keys, min(100, len(keys)))
