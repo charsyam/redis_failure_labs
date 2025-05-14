@@ -14,9 +14,8 @@ base_title = "일반 공지사항"
 for i in range(1, 101):
     title = f"{base_title} #{i}"
 
-    # 중간 하나만 매우 큰 본문 (ID 50)
     if i == 100:
-        big_body = "🚨 중대한 보안 공지입니다.\n" * 2000000  # 약 4~5MB 정도
+        big_body = "🚨 중대한 보안 공지입니다.\n" * 2000000 
         body = big_body
     else:
         body = base_body + str(random.randint(0, 10000))
@@ -27,4 +26,4 @@ for i in range(1, 101):
     r.set(f"announcement:{notice_id}:body", body)
     r.lpush("announcement:list", notice_id)
 
-print("✅ 공지사항 100개 등록 완료 (ID 50은 대용량)")
+print("✅ 공지사항 100개 등록 완료")
