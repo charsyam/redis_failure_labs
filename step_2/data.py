@@ -17,4 +17,4 @@ def bulk_enqueue(n=10000):
     print(f"{n} users enqueued.")
 
 if __name__ == "__main__":
-    bulk_enqueue(200000)  # 필요 시 숫자 조절
+    bulk_enqueue(1000000)  # 필요 시 숫자 조절
